@@ -2,13 +2,45 @@
 
 自建的 DeepSeek Harness (`@deepseek-ai/dsh`) 镜像:明文 HTTP、无需 token、可选 basic auth、可全网访问。
 
-## 使用
+## Docker 部署
+
+镜像:`ghcr.io/yinxteam/dsh-docker:latest`(支持 amd64 / arm64)。
+
+### 方式一:docker compose(推荐)
 
 ```bash
-docker compose up -d --build
-# 或使用 CI 构建的镜像:DSH_IMAGE=ghcr.io/<owner>/deepseek-harness:latest docker compose up -d
-# 浏览器打开 http://<服务器IP>:8080
+# 可选:创建 .env 配置认证和端口(不创建则无认证,端口 8080)
+cat > .env <<'EOF'
+PORT=8080
+DSH_AUTH_USERNAME=admin
+DSH_AUTH_PASSWORD=请改成强密码
+EOF
+
+docker compose up -d
 ```
+
+浏览器打开 `http://<服务器IP>:8080`。工作区文件在 `./workspace`,dsh 的设置和会话数据在命名卷 `dsh-data`。
+
+### 方式二:docker run
+
+```bash
+docker run -d --name deepseek-harness --restart unless-stopped \
+  -p 8080:8080 \
+  -e DSH_AUTH_USERNAME=admin -e DSH_AUTH_PASSWORD='请改成强密码' \
+  -v dsh-data:/data -v "$PWD/workspace:/workspace" \
+  ghcr.io/yinxteam/dsh-docker:latest
+```
+
+不需要认证时,去掉两个 `DSH_AUTH_*` 参数即可。
+
+### 本地构建
+
+```bash
+docker compose build
+DSH_IMAGE=deepseek-harness:local docker compose up -d
+```
+
+### 配置项
 
 | 环境变量 | 默认 | 说明 |
 | --- | --- | --- |
@@ -23,9 +55,10 @@ dsh 的版本在镜像构建时确定,容器内不再联网更新。GitHub Actio
 
 ```bash
 docker compose pull && docker compose up -d
+# docker run 用户:重新 pull 后删除旧容器再运行
 ```
 
-固定版本就把 `DSH_IMAGE` 的标签改成具体版本号。本地自行构建:`docker compose build --build-arg DSH_VERSION=<版本>`。
+固定版本就把 `DSH_IMAGE` 的标签改成具体版本号(如 `ghcr.io/yinxteam/dsh-docker:0.2.1-rc.2`)。本地自行构建:`docker compose build --build-arg DSH_VERSION=<版本>`。
 
 ## 实现说明
 

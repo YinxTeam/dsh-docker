@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Disable dsh's launch-token / cookie check when DSH_AUTH_PROXY=1 (same idea as
-# the 1Panel image). Usage: patch-dsh.sh <npm-prefix>
-# Fails loudly if the upstream source no longer has the expected shape.
+# 设置 DSH_AUTH_PROXY=1 时跳过 dsh 的启动 token / cookie 校验(思路与 1Panel 镜像相同)
+# 用法:patch-dsh.sh <npm 安装目录>
+# 如果上游源码结构变了、找不到目标代码,会直接报错退出,避免产出未打补丁的镜像
 set -Eeuo pipefail
 
 prefix="${1:?usage: patch-dsh.sh <npm-prefix>}"

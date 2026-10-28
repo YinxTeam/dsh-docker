@@ -3,7 +3,7 @@ FROM caddy:2 AS caddy
 FROM node:24-bookworm-slim
 
 ARG PNPM_VERSION=11.7.0
-# dsh version installed into the image. CI passes the exact released version.
+# 安装到镜像里的 dsh 版本,CI 构建时会传入具体的发布版本号
 ARG DSH_VERSION=latest
 
 LABEL org.opencontainers.image.title="DeepSeek Harness (HTTP)" \
@@ -45,7 +45,7 @@ WORKDIR /workspace
 VOLUME ["/data", "/workspace"]
 EXPOSE 8080
 
-# dsh answers directly on loopback, so this works with or without basic auth.
+# 直接检查回环地址上的 dsh,无论是否启用 basic auth 都适用
 HEALTHCHECK --interval=30s --timeout=5s --start-period=240s --retries=3 \
   CMD curl -fsS --max-time 5 http://127.0.0.1:3080/ >/dev/null || exit 1
 

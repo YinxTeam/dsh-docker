@@ -3,16 +3,17 @@ services:
     build:
       context: .
       args:
-        DSH_VERSION: latest   # dsh version to install when building locally
-    # Set DSH_IMAGE=ghcr.io/<owner>/deepseek-harness:latest to use the CI-built image.
-    image: "${DSH_IMAGE:-deepseek-harness:local}"
+        DSH_VERSION: latest   # 本地构建时安装的 dsh 版本
+    # 默认拉取 CI 构建好的镜像;如需本地构建,执行 docker compose build,
+    # 并设置 DSH_IMAGE=deepseek-harness:local
+    image: "${DSH_IMAGE:-ghcr.io/yinxteam/dsh-docker:latest}"
     container_name: deepseek-harness
     restart: unless-stopped
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
     environment:
       PORT: "${PORT:-8080}"
-      # Leave both empty to disable basic auth.
+      # 两项都留空表示不启用 basic auth
       DSH_AUTH_USERNAME: "${DSH_AUTH_USERNAME:-}"
       DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD:-}"
     volumes:

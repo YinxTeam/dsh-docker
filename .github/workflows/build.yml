@@ -2,8 +2,8 @@ name: build
 
 on:
   schedule:
-    - cron: "17 2 * * *"   # daily: build only if a new dsh release has no image yet
-    - cron: "47 3 * * 1"   # weekly: force a rebuild to pick up base image updates
+    - cron: "17 2 * * *"   # 每天:仅当 dsh 有新版本且还没有对应镜像时才构建
+    - cron: "47 3 * * 1"   # 每周一:强制重建,获取基础镜像更新
   workflow_dispatch:
   push:
     branches: [main]

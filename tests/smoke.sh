@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test: usage tests/smoke.sh <image>
+# 冒烟测试,用法:tests/smoke.sh <镜像>
 set -Eeuo pipefail
 
 image="${1:?usage: smoke.sh <image>}"
@@ -19,7 +19,7 @@ expect() {
   fi
   printf 'ok: %s (%s)\n' "$what" "$got"
 }
-wait_for() { # url expected-code
+wait_for() { # 参数:地址 期望状态码
   for _ in $(seq 1 60); do
     [[ "$(code "$1")" == "$2" ]] && return 0
     sleep 2
