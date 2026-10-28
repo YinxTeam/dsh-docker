@@ -6,6 +6,12 @@ log() { printf '[entrypoint] %s\n' "$*"; }
 port="${PORT:-8080}"
 auth_username="${DSH_AUTH_USERNAME:-}"
 auth_password="${DSH_AUTH_PASSWORD:-}"
+workspace="${DSH_WORKSPACE:-/data/dsh/home/workspace}"
+
+if [[ "$workspace" != /* ]]; then
+  printf 'DSH_WORKSPACE must be an absolute path.\n' >&2
+  exit 1
+fi
 
 if [[ ! "$port" =~ ^[0-9]+$ ]] || (( port < 1 || port > 65535 )); then
   printf 'PORT must be a number between 1 and 65535.\n' >&2
@@ -24,9 +30,9 @@ if [[ -n "$auth_username" || -n "$auth_password" ]]; then
 fi
 
 install -d -m 0700 -o node -g node /data/dsh /data/dsh/home
-install -d -m 0750 -o node -g node /workspace
+install -d -m 0750 -o node -g node "$workspace"
 install -d -m 0700 -o caddy -g caddy /data/caddy /data/caddy/config
-
+cd "$workspace"
 
 install -d -m 0750 -o root -g caddy /run/dsh-auth
 auth_file=/run/dsh-auth/auth.caddy

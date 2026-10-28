@@ -19,7 +19,7 @@ EOF
 docker compose up -d
 ```
 
-浏览器打开 `http://<服务器IP>:8080`。工作区文件在 `./workspace`,dsh 的设置和会话数据在命名卷 `dsh-data`。
+浏览器打开 `http://<服务器IP>:8080`。工作区默认在容器内 `/data/dsh/home/workspace`,与 dsh 的设置、会话数据一起保存在命名卷 `dsh-data`。
 
 ### 方式二:docker run
 
@@ -27,7 +27,7 @@ docker compose up -d
 docker run -d --name deepseek-harness --restart unless-stopped \
   -p 8080:8080 \
   -e DSH_AUTH_USERNAME=admin -e DSH_AUTH_PASSWORD='请改成强密码' \
-  -v dsh-data:/data -v "$PWD/workspace:/workspace" \
+  -v dsh-data:/data/dsh \
   ghcr.io/yinxteam/dsh-docker:latest
 ```
 
@@ -46,6 +46,7 @@ DSH_IMAGE=deepseek-harness:local docker compose up -d
 | --- | --- | --- |
 | `PORT` | `8080` | 容器内外监听端口(需 ≥1024) |
 | `DSH_AUTH_USERNAME` / `DSH_AUTH_PASSWORD` | 空 | 同时设置则启用 basic auth;同时留空则不认证;只设一个会启动失败 |
+| `DSH_WORKSPACE` | `/data/dsh/home/workspace` | 默认工作目录(绝对路径,启动时自动创建并 cd 进入);改到卷外时需自行挂载该路径 |
 
 ## 更新 dsh
 

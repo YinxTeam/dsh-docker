@@ -16,9 +16,10 @@ services:
       # 两项都留空表示不启用 basic auth
       DSH_AUTH_USERNAME: "${DSH_AUTH_USERNAME:-}"
       DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD:-}"
+      # 默认工作目录,位于 dsh-data 卷内;如需改到别处,同时挂载对应路径
+      DSH_WORKSPACE: "${DSH_WORKSPACE:-/data/dsh/home/workspace}"
     volumes:
-      - dsh-data:/data
-      - ./workspace:/workspace
+      - dsh-data:/data/dsh
 
 volumes:
   dsh-data:

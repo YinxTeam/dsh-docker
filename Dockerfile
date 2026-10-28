@@ -32,17 +32,19 @@ RUN sed -i 's/\r$//' /etc/caddy/Caddyfile /usr/local/bin/dsh /usr/local/bin/patc
     useradd --system --uid 1001 --gid caddy --home-dir /var/lib/caddy \
       --create-home --shell /usr/sbin/nologin caddy && \
     install -d -m 0700 -o node -g node /data/dsh /data/dsh/home && \
-    install -d -m 0750 -o node -g node /workspace && \
+    install -d -m 0750 -o node -g node /data/dsh/home/workspace && \
     install -d -m 0700 -o caddy -g caddy /data/caddy /data/caddy/config && \
     dsh --help >/dev/null && \
     grep -h '"version"' /opt/dsh/node_modules/@deepseek-ai/dsh/package.json
 
+# DSH_WORKSPACE 为默认工作目录,可在运行时通过环境变量覆盖(由入口脚本 cd 进入)
 ENV DSH_HOME=/data/dsh \
+    DSH_WORKSPACE=/data/dsh/home/workspace \
     DSH_TELEMETRY_DISABLED=1 \
     PORT=8080
 
-WORKDIR /workspace
-VOLUME ["/data", "/workspace"]
+WORKDIR /data/dsh/home/workspace
+VOLUME ["/data"]
 EXPOSE 8080
 
 # 直接检查回环地址上的 dsh,无论是否启用 basic auth 都适用
