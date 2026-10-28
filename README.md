@@ -9,12 +9,8 @@
 ### 方式一:docker compose(推荐)
 
 ```bash
-# 可选:创建 .env 配置认证和端口(不创建则无认证,端口 8080)
-cat > .env <<'EOF'
-PORT=8080
-DSH_AUTH_USERNAME=admin
-DSH_AUTH_PASSWORD=请改成强密码
-EOF
+# 可选:从示例复制 .env 并修改认证和端口(不创建则无认证,端口 8080)
+cp .env.example .env
 
 docker compose up -d
 ```
