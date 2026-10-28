@@ -1,0 +1,23 @@
+services:
+  deepseek-harness:
+    build:
+      context: .
+      args:
+        DSH_VERSION: latest   # dsh version to install when building locally
+    # Set DSH_IMAGE=ghcr.io/<owner>/deepseek-harness:latest to use the CI-built image.
+    image: "${DSH_IMAGE:-deepseek-harness:local}"
+    container_name: deepseek-harness
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    environment:
+      PORT: "${PORT:-8080}"
+      # Leave both empty to disable basic auth.
+      DSH_AUTH_USERNAME: "${DSH_AUTH_USERNAME:-}"
+      DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD:-}"
+    volumes:
+      - dsh-data:/data
+      - ./workspace:/workspace
+
+volumes:
+  dsh-data:

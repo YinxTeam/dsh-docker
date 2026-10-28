@@ -1,0 +1,7 @@
+workspace
+README.md
+docker-compose.yml
+.dockerignore
+.github
+tests
+.git

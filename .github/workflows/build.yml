@@ -1,0 +1,91 @@
+name: build
+
+on:
+  schedule:
+    - cron: "17 2 * * *"   # daily: build only if a new dsh release has no image yet
+    - cron: "47 3 * * 1"   # weekly: force a rebuild to pick up base image updates
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore: ["README.md"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  PACKAGE: "@deepseek-ai/dsh"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      build: ${{ steps.v.outputs.build }}
+      image: ${{ steps.v.outputs.image }}
+    steps:
+      - name: Resolve latest dsh and decide whether to build
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(npm view "$PACKAGE@latest" version)"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          build=true
+          if [ "${{ github.event.schedule }}" = "17 2 * * *" ] \
+              && docker buildx imagetools inspect "$image:$version" >/dev/null 2>&1; then
+            build=false
+          fi
+          echo "latest dsh=$version image=$image build=$build"
+          {
+            echo "version=$version"
+            echo "image=$image"
+            echo "build=$build"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      IMAGE: ${{ needs.check.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build amd64 image for smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          platforms: linux/amd64
+          tags: dsh-smoke:test
+          build-args: DSH_VERSION=${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: bash tests/smoke.sh dsh-smoke:test
+
+      - name: Push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+            ${{ env.IMAGE }}:latest
+          build-args: DSH_VERSION=${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
