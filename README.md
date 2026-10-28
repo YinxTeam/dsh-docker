@@ -8,6 +8,32 @@
 
 ### 方式一:docker compose(推荐)
 
+`docker-compose.yml`(只拉取镜像、不需要本地构建时,可去掉 `build` 段):
+
+```yaml
+services:
+  deepseek-harness:
+    image: "${DSH_IMAGE:-ghcr.io/yinxteam/dsh-docker:latest}"
+    container_name: deepseek-harness
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    environment:
+      PORT: "${PORT:-8080}"
+      # 两项都留空表示不启用 basic auth
+      DSH_AUTH_USERNAME: "${DSH_AUTH_USERNAME:-}"
+      DSH_AUTH_PASSWORD: "${DSH_AUTH_PASSWORD:-}"
+      # 默认工作目录,位于 dsh-data 卷内;如需改到别处,同时挂载对应路径
+      DSH_WORKSPACE: "${DSH_WORKSPACE:-/data/dsh/home/workspace}"
+    volumes:
+      - dsh-data:/data/dsh
+
+volumes:
+  dsh-data:
+```
+
+启动:
+
 ```bash
 # 可选:从示例复制 .env 并修改认证和端口(不创建则无认证,端口 8080)
 cp .env.example .env
