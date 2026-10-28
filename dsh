@@ -4,7 +4,29 @@ set -eu
 bin=/opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js
 
 if [ "$(id -u)" -eq 0 ]; then
-  exec gosu node env HOME=/data/dsh/home DSH_HOME=/data/dsh \
+  docker_gid=""
+  if [ -S /var/run/docker.sock ]; then
+    docker_gid="$(stat -c '%g' /var/run/docker.sock)"
+  fi
+
+  case "$docker_gid" in
+    ''|*[!0-9]*)
+      exec gosu node env HOME=/data/dsh/home DSH_HOME=/data/dsh \
+        node --expose-internals "$bin" "$@"
+      ;;
+  esac
+
+  if [ "$docker_gid" = "1000" ]; then
+    groups=1000
+  else
+    groups="1000,$docker_gid"
+  fi
+
+  exec setpriv \
+    --reuid=1000 \
+    --regid=1000 \
+    --groups="$groups" \
+    env HOME=/data/dsh/home DSH_HOME=/data/dsh \
     node --expose-internals "$bin" "$@"
 fi
 
