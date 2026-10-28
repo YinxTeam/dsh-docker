@@ -1,7 +1,8 @@
 FROM caddy:2 AS caddy
 
-FROM node:24-bookworm-slim
+FROM debian:bookworm-slim
 
+ARG NODE_VERSION=24.22.1
 ARG PNPM_VERSION=11.7.0
 # 安装到镜像里的 dsh 版本,CI 构建时会传入具体的发布版本号
 ARG DSH_VERSION=latest
@@ -9,10 +10,31 @@ ARG DSH_VERSION=latest
 LABEL org.opencontainers.image.title="DeepSeek Harness (HTTP)" \
       org.opencontainers.image.description="DeepSeek Harness web UI over plain HTTP with optional basic auth"
 
-RUN apt-get update && \
+# 1. 配置国内可访问的 apt 源并安装系统依赖 (含 xz-utils 用于解压 node tarball)
+# 2. 从 nodejs.org 官方下载二进制包并解压到 /usr/local
+# 3. 创建 node (1000) 和 caddy (1001) 用户/组
+RUN set -e && \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources; \
+    fi && \
+    apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      bash bubblewrap ca-certificates curl git gosu openssh-client ripgrep tini && \
-    rm -rf /var/lib/apt/lists/*
+      bash bubblewrap ca-certificates curl git gosu openssh-client ripgrep tini xz-utils && \
+    rm -rf /var/lib/apt/lists/* && \
+    ARCH="$(dpkg --print-architecture)" && \
+    case "${ARCH}" in \
+      amd64) NODE_ARCH="x64" ;; \
+      arm64) NODE_ARCH="arm64" ;; \
+      armhf) NODE_ARCH="armv7l" ;; \
+      *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
+    esac && \
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" \
+      | tar -xJ --strip-components=1 -C /usr/local && \
+    groupadd --system --gid 1000 node && \
+    useradd --system --uid 1000 --gid node --shell /usr/sbin/nologin node && \
+    groupadd --system --gid 1001 caddy && \
+    useradd --system --uid 1001 --gid caddy --home-dir /var/lib/caddy \
+      --create-home --shell /usr/sbin/nologin caddy
 
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 
@@ -28,9 +50,6 @@ RUN sed -i 's/\r$//' /etc/caddy/Caddyfile /usr/local/bin/dsh /usr/local/bin/patc
     npm install --prefix /opt/dsh "@deepseek-ai/dsh@${DSH_VERSION}" \
       --omit=dev --no-audit --no-fund && \
     patch-dsh.sh /opt/dsh && \
-    groupadd --system --gid 1001 caddy && \
-    useradd --system --uid 1001 --gid caddy --home-dir /var/lib/caddy \
-      --create-home --shell /usr/sbin/nologin caddy && \
     install -d -m 0700 -o node -g node /data/dsh /data/dsh/home && \
     install -d -m 0750 -o node -g node /data/dsh/home/workspace && \
     install -d -m 0700 -o caddy -g caddy /data/caddy /data/caddy/config && \
