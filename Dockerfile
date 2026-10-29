@@ -6,16 +6,20 @@ ARG NODE_VERSION=24.22.1
 ARG PNPM_VERSION=11.7.0
 # 安装到镜像里的 dsh 版本,CI 构建时会传入具体的发布版本号
 ARG DSH_VERSION=latest
+# 可选镜像源,默认使用官方源;国内本地构建可传入
+# APT_MIRROR=mirrors.ustc.edu.cn  NODE_MIRROR=https://npmmirror.com/mirrors/node
+ARG APT_MIRROR=
+ARG NODE_MIRROR=https://nodejs.org/dist
 
 LABEL org.opencontainers.image.title="DeepSeek Harness (HTTP)" \
       org.opencontainers.image.description="DeepSeek Harness web UI over plain HTTP with optional basic auth"
 
-# 1. 配置国内可访问的 apt 源并安装系统依赖 (含 xz-utils 用于解压 node tarball)
-# 2. 从 nodejs.org 官方下载二进制包并解压到 /usr/local
-# 3. 创建 node (1000) 和 caddy (1001) 用户/组
+# 1. (可选)替换 apt 源并安装系统依赖 (含 xz-utils 用于解压 node tarball)
+# 2. 下载 Node 官方二进制包,校验 SHA256 后解压到 /usr/local
+# 3. 创建 node (1000, 可登录 shell) 和 caddy (1001, 不可登录) 用户/组
 RUN set -e && \
-    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
-      sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources; \
+    if [ -n "${APT_MIRROR}" ] && [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i "s/deb.debian.org/${APT_MIRROR}/g" /etc/apt/sources.list.d/debian.sources; \
     fi && \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -28,10 +32,17 @@ RUN set -e && \
       armhf) NODE_ARCH="armv7l" ;; \
       *) echo "Unsupported architecture: ${ARCH}" && exit 1 ;; \
     esac && \
-    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" \
-      | tar -xJ --strip-components=1 -C /usr/local && \
-    groupadd --system --gid 1000 node && \
-    useradd --system --uid 1000 --gid node --shell /usr/sbin/nologin node && \
+    NODE_TARBALL="node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" && \
+    cd /tmp && \
+    curl -fsSLO "${NODE_MIRROR}/v${NODE_VERSION}/${NODE_TARBALL}" && \
+    curl -fsSLO "${NODE_MIRROR}/v${NODE_VERSION}/SHASUMS256.txt" && \
+    grep " ${NODE_TARBALL}\$" SHASUMS256.txt | sha256sum -c - && \
+    tar -xJf "${NODE_TARBALL}" --strip-components=1 --no-same-owner -C /usr/local && \
+    rm -f "${NODE_TARBALL}" SHASUMS256.txt \
+      /usr/local/CHANGELOG.md /usr/local/LICENSE /usr/local/README.md && \
+    cd / && \
+    groupadd --gid 1000 node && \
+    useradd --uid 1000 --gid node --shell /bin/bash --home-dir /data/dsh/home node && \
     groupadd --system --gid 1001 caddy && \
     useradd --system --uid 1001 --gid caddy --home-dir /var/lib/caddy \
       --create-home --shell /usr/sbin/nologin caddy
@@ -58,6 +69,7 @@ RUN sed -i 's/\r$//' /etc/caddy/Caddyfile /usr/local/bin/dsh /usr/local/bin/patc
 
 # DSH_WORKSPACE 为默认工作目录,可在运行时通过环境变量覆盖(由入口脚本 cd 进入)
 ENV DSH_HOME=/data/dsh \
+    SHELL=/bin/bash \
     DSH_WORKSPACE=/data/dsh/home/workspace \
     DSH_TELEMETRY_DISABLED=1 \
     PORT=8080
